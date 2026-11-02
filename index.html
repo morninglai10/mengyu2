@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#142d2a">
+  <title>皇帝遊戲｜世界河川巡旅</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #edf2db;
+      --muted: #a9b8a8;
+      --panel: #1d3934;
+      --panel-light: #294a42;
+      --gold: #efc66c;
+      --teal: #79d6b1;
+      --red: #f08c76;
+      font-family: "Segoe UI", "Microsoft JhengHei", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0, #315c4d 0, #142d2a 52%, #0c201e 100%);
+      color: var(--ink);
+    }
+    button, input { font: inherit; }
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 16px;
+      color: #17302b;
+      background: var(--gold);
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+    button:disabled { opacity: .48; cursor: not-allowed; }
+    button.secondary { color: var(--ink); background: #47675b; }
+    button.danger { color: white; background: #a94f43; }
+    input {
+      min-width: 0;
+      border: 1px solid #527267;
+      border-radius: 9px;
+      padding: 10px 12px;
+      color: var(--ink);
+      background: #142d2a;
+    }
+    .wrap { width: min(1120px, 100%); margin: auto; padding: 24px; }
+    header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+    h1 { margin: 0; color: var(--gold); letter-spacing: .06em; font-size: clamp(26px, 5vw, 42px); }
+    .subtitle { color: var(--muted); margin: 8px 0 0; }
+    .badge { border: 1px solid #527267; border-radius: 99px; padding: 8px 12px; color: var(--teal); white-space: nowrap; }
+    .audio-controls { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+    .volume-control { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+    .volume-control input { width: 78px; accent-color: var(--gold); padding: 0; }
+    .setup, .game { margin-top: 24px; }
+    .setup-card, .panel, .center-card {
+      border: 1px solid #416257;
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(41,74,66,.94), rgba(24,52,47,.96));
+      box-shadow: 0 14px 40px #071a1740;
+    }
+    .setup-card { max-width: 650px; margin: 36px auto; padding: 28px; }
+    .setup-card h2 { margin-top: 0; }
+    .name-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 20px 0; }
+    .name-grid label { display: grid; gap: 7px; color: var(--muted); }
+    .rules { color: var(--muted); line-height: 1.8; padding-left: 20px; }
+    .gamebar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .turn-label { font-weight: 800; color: var(--gold); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(260px, .8fr); gap: 16px; align-items: start; }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      grid-template-rows: repeat(7, minmax(74px, 1fr));
+      gap: 7px;
+      padding: 10px;
+      aspect-ratio: 1;
+      border: 1px solid #416257;
+      border-radius: 18px;
+      background: #102824;
+    }
+    .tile {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-width: 0;
+      overflow: hidden;
+      padding: 8px;
+      border: 1px solid #527267;
+      border-radius: 10px;
+      background: #23463d;
+      font-size: 12px;
+    }
+    .tile.river { border-top: 4px solid #5ec5df; }
+    .tile.green { border-top: 4px solid #8bd878; }
+    .tile.carbon { border-top: 4px solid #ed9877; }
+    .tile.engineering { border-top: 4px solid #c5a5ef; }
+    .tile.start { border-top: 4px solid var(--gold); }
+    .tile.active { outline: 3px solid var(--gold); z-index: 1; }
+    .tile.active .token { animation: token-arrive .36s ease-out; }
+    .dice-display {
+      display: grid;
+      place-items: center;
+      min-height: 72px;
+      margin: 4px 0 10px;
+      color: var(--gold);
+      font-size: 46px;
+      line-height: 1;
+    }
+    .dice-display.rolling { animation: dice-roll .16s ease-in-out infinite alternate; }
+    @keyframes dice-roll {
+      from { transform: rotate(-12deg) scale(.92); }
+      to { transform: rotate(12deg) scale(1.08); }
+    }
+    @keyframes token-arrive {
+      0% { transform: scale(.5); box-shadow: 0 0 0 0 #efc66c99; }
+      65% { transform: scale(1.45); box-shadow: 0 0 0 8px #efc66c00; }
+      100% { transform: scale(1); }
+    }
+    .tile-name { font-weight: 800; line-height: 1.3; }
+    .tile-meta { color: #bdcabe; font-size: 10px; }
+    .tokens { display: flex; gap: 3px; flex-wrap: wrap; }
+    .token { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #fff9; }
+    .center-card {
+      grid-column: 2 / 7;
+      grid-row: 2 / 7;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 18px;
+      text-align: center;
+    }
+    .globe { font-size: clamp(34px, 7vw, 70px); line-height: 1.2; }
+    .world-map {
+      display: block;
+      width: min(100%, 360px);
+      max-height: 48%;
+      flex: 0 1 auto;
+      filter: drop-shadow(0 8px 12px #071a1766);
+    }
+    .center-card h2 { margin: 6px 0; color: var(--gold); }
+    .center-card p { margin: 5px 0; color: var(--muted); line-height: 1.5; }
+    .sidebar { display: grid; gap: 14px; }
+    .panel { padding: 16px; }
+    .panel h2, .panel h3 { margin: 0 0 12px; }
+    .player-card { padding: 10px 0; border-top: 1px solid #416257; }
+    .player-card:first-of-type { border-top: 0; }
+    .player-heading { display: flex; align-items: center; gap: 8px; font-weight: 800; }
+    .stats { margin-top: 6px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .action-box { min-height: 102px; color: var(--muted); line-height: 1.55; }
+    .action-box strong { display: block; color: var(--ink); margin-bottom: 8px; }
+    .action-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .log { display: flex; flex-direction: column-reverse; gap: 8px; max-height: 205px; overflow: auto; color: var(--muted); font-size: 13px; }
+    .log-entry { border-top: 1px solid #416257; padding-top: 7px; }
+    .hidden { display: none !important; }
+    .modal {
+      position: fixed; inset: 0; z-index: 5; display: grid; place-items: center;
+      padding: 20px; background: #081916d9;
+    }
+    .modal-card { width: min(480px, 100%); padding: 28px; text-align: center; }
+    .modal-card p { color: var(--muted); line-height: 1.65; }
+    .modal-card h2 { color: var(--gold); }
+    .notice { margin-top: 12px; color: var(--muted); font-size: 12px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+    }
+    @media (max-width: 760px) {
+      .wrap { padding: 16px; }
+      .layout { grid-template-columns: 1fr; }
+      .board {       grid-template-rows: repeat(7, minmax(52px, 1fr)); gap: 4px; padding: 6px; }
+      .tile { padding: 5px; font-size: 10px; }
+      .tile-meta { font-size: 9px; }
+      .token { width: 8px; height: 8px; }
+      .center-card { padding: 8px; }
+      .center-card p { font-size: 12px; }
+    }
+    @media (max-width: 420px) {
+      .wrap { padding: 12px; }
+      .badge { font-size: 11px; }
+      .name-grid { gap: 8px; }
+      .board { grid-template-rows: repeat(7, minmax(44px, 1fr)); }
+      .tile-name { font-size: 9px; }
+      .tile-meta { font-size: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div>
+        <h1>皇帝遊戲</h1>
+        <p class="subtitle">世界河川巡旅・四人桌遊原型</p>
+      </div>
+      <span class="badge">4 位玩家・最多 2 小時</span>
+    </header>
+
+    <section id="setup" class="setup">
+      <div class="setup-card">
+        <h2>準備啟程</h2>
+        <p class="subtitle">輪流擲骰，建設河川、管理碳排，完成你的世界巡旅。</p>
+        <div class="name-grid">
+          <label>玩家一<input maxlength="14" value="玩家一" aria-label="玩家一名稱"></label>
+          <label>玩家二<input maxlength="14" value="玩家二" aria-label="玩家二名稱"></label>
+          <label>玩家三<input maxlength="14" value="玩家三" aria-label="玩家三名稱"></label>
+          <label>玩家四<input maxlength="14" value="玩家四" aria-label="玩家四名稱"></label>
+        </div>
+        <ul class="rules">
+          <li>經過起點可獲得 200 資金；停在河川可購買河川卡。</li>
+          <li>集滿 3 張河川卡自動建成 1 個國度；集滿 5 個國度後開始環遊。</li>
+          <li>建成 5 國後，累積走完 24 格即可獲勝；兩小時到時以總分決勝。</li>
+          <li>河川工程會帶來碳排；綠能與碳管理事件能改善你的碳帳。</li>
+        </ul>
+        <button id="startButton">開始新遊戲</button>
+        <p class="notice">本原型為本機輪流遊玩，不連線、不購買、不收集個人資料。</p>
+      </div>
+    </section>
+
+    <section id="game" class="game hidden">
+      <div class="gamebar">
+        <div class="turn-label" id="turnLabel"></div>
+        <div>
+          <span class="badge" id="timerLabel">02:00:00</span>
+          <div class="audio-controls">
+            <button id="soundButton" class="secondary" type="button" aria-pressed="true" aria-label="關閉音效">音效：開</button>
+            <button id="musicButton" class="secondary" type="button" aria-pressed="true" aria-label="關閉背景音樂">音樂：開</button>
+            <label class="volume-control" for="musicVolume">音量<input id="musicVolume" type="range" min="0" max="0.2" step="0.01" value="0.07"></label>
+            <button id="resetButton" class="secondary">重新開始</button>
+          </div>
+        </div>
+      </div>
+      <div class="layout">
+        <div id="board" class="board" aria-label="世界巡旅棋盤"></div>
+        <aside class="sidebar">
+          <section class="panel">
+            <h2>玩家狀態</h2>
+            <div id="players"></div>
+          </section>
+          <section class="panel">
+            <h2>本回合</h2>
+            <div id="actionBox" class="action-box" aria-live="polite">
+              <strong>輪到你了</strong>擲骰開始行動。
+            </div>
+            <div id="diceDisplay" class="dice-display" aria-label="骰子">🎲</div>
+            <div class="action-buttons">
+              <button id="rollButton">擲骰</button>
+              <button id="endTurnButton" class="secondary" disabled>結束回合</button>
+            </div>
+          </section>
+          <section class="panel">
+            <h2>旅程紀錄</h2>
+            <div id="log" class="log" aria-live="polite"></div>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <div id="winnerModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="winnerTitle">
+    <div class="modal-card panel">
+      <div class="globe">🌍</div>
+      <h2 id="winnerTitle">旅程完成</h2>
+      <p id="winnerMessage"></p>
+      <button id="playAgainButton">再玩一局</button>
+    </div>
+  </div>
+  <script>
+    (() => {
+      "use strict";
+      const duration = 2 * 60 * 60;
+      const colors = ["#ed7562", "#64c4e0", "#f2cb69", "#a58be8"];
+      const tiles = [
+        { name: "世界起點", type: "start", note: "經過 +200" },
+        { name: "尼羅河", type: "river", note: "工程 120" },
+        { name: "綠能市集", type: "green", note: "抽取綠能事件" },
+        { name: "亞馬遜河", type: "river", note: "工程 140" },
+        { name: "碳交易所", type: "carbon", note: "碳管理事件" },
+        { name: "長江", type: "river", note: "工程 160" },
+        { name: "水庫工程", type: "engineering", note: "工程事件" },
+        { name: "密西西比河", type: "river", note: "工程 130" },
+        { name: "綠能市集", type: "green", note: "抽取綠能事件" },
+        { name: "湄公河", type: "river", note: "工程 120" },
+        { name: "碳交易所", type: "carbon", note: "碳管理事件" },
+        { name: "伏爾加河", type: "river", note: "工程 150" },
+        { name: "水庫工程", type: "engineering", note: "工程事件" },
+        { name: "剛果河", type: "river", note: "工程 120" },
+        { name: "綠能市集", type: "green", note: "抽取綠能事件" },
+        { name: "多瑙河", type: "river", note: "工程 140" },
+        { name: "碳交易所", type: "carbon", note: "碳管理事件" },
+        { name: "黃河", type: "river", note: "工程 150" },
+        { name: "水庫工程", type: "engineering", note: "工程事件" },
+        { name: "萊茵河", type: "river", note: "工程 130" },
+        { name: "綠能市集", type: "green", note: "抽取綠能事件" },
+        { name: "恆河", type: "river", note: "工程 140" },
+        { name: "碳交易所", type: "carbon", note: "碳管理事件" },
+        { name: "札格羅斯河", type: "river", note: "工程 120" }
+      ];
+      const coordinates = [];
+      for (let x = 0; x < 7; x++) coordinates.push([0, x]);
+      for (let y = 1; y < 7; y++) coordinates.push([y, 6]);
+      for (let x = 5; x >= 0; x--) coordinates.push([6, x]);
+      for (let y = 5; y >= 1; y--) coordinates.push([y, 0]);
+
+      const state = { players: [], current: 0, seconds: duration, timer: null, rolled: false, waiting: false, finished: false };
+      const $ = (id) => document.getElementById(id);
+      const randomInt = (max) => Math.floor(Math.random() * max);
+      let soundEnabled = true;
+      let audioContext = null;
+      let musicEnabled = true;
+      let musicGain = null;
+      let musicTimer = null;
+      let musicStep = 0;
+      const musicNotes = [523.25, 587.33, 698.46, 783.99, 698.46, 587.33, 523.25, 392, 440, 523.25, 587.33, 783.99, 698.46, 587.33, 440, 523.25];
+
+      function getAudioContext() {
+        if (!window.AudioContext) return null;
+        if (!audioContext) audioContext = new AudioContext();
+        if (audioContext.state === "suspended") audioContext.resume();
+        return audioContext;
+      }
+
+      function playSound(kind) {
+        if (!soundEnabled) return;
+        const context = getAudioContext();
+        if (!context) return;
+        const patterns = {
+          dice: [[520, 0, .07], [760, .09, .09]],
+          build: [[523, 0, .12], [659, .1, .14], [784, .2, .22]],
+          turn: [[440, 0, .1]],
+          win: [[523, 0, .18], [659, .15, .18], [784, .3, .18], [1047, .45, .38]]
+        };
+        const now = context.currentTime;
+        patterns[kind].forEach(([frequency, offset, duration]) => {
+          const oscillator = context.createOscillator();
+          const gain = context.createGain();
+          const start = now + offset;
+          oscillator.type = "sine";
+          oscillator.frequency.setValueAtTime(frequency, start);
+          gain.gain.setValueAtTime(.0001, start);
+          gain.gain.exponentialRampToValueAtTime(.07, start + .015);
+          gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+          oscillator.connect(gain);
+          gain.connect(context.destination);
+          oscillator.start(start);
+          oscillator.stop(start + duration);
+        });
+      }
+
+      function playMusicNote(frequency, start, duration, volume, type) {
+        const oscillator = audioContext.createOscillator();
+        const envelope = audioContext.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, start);
+        envelope.gain.setValueAtTime(.0001, start);
+        envelope.gain.exponentialRampToValueAtTime(volume, start + .035);
+        envelope.gain.exponentialRampToValueAtTime(.0001, start + duration);
+        oscillator.connect(envelope);
+        envelope.connect(musicGain);
+        oscillator.start(start);
+        oscillator.stop(start + duration + .02);
+      }
+
+      function scheduleMusicStep() {
+        if (!musicEnabled || !audioContext || !musicGain) return;
+        const start = audioContext.currentTime + .025;
+        const note = musicNotes[musicStep];
+        playMusicNote(note, start, .32, .12, "sine");
+        if (musicStep % 4 === 0) {
+          playMusicNote(note / 2, start, .9, .045, "triangle");
+        }
+        musicStep = (musicStep + 1) % musicNotes.length;
+        musicTimer = setTimeout(scheduleMusicStep, 380);
+      }
+
+      function startMusic() {
+        if (!musicEnabled || musicTimer) return;
+        const context = getAudioContext();
+        if (!context) return;
+        musicGain = context.createGain();
+        musicGain.gain.setValueAtTime(.0001, context.currentTime);
+        musicGain.gain.exponentialRampToValueAtTime(Number($("musicVolume").value) || .0001, context.currentTime + .8);
+        musicGain.connect(context.destination);
+        musicStep = 0;
+        scheduleMusicStep();
+      }
+
+      function stopMusic() {
+        if (musicTimer) clearTimeout(musicTimer);
+        musicTimer = null;
+        if (musicGain && audioContext) {
+          const oldGain = musicGain;
+          oldGain.gain.cancelScheduledValues(audioContext.currentTime);
+          oldGain.gain.setTargetAtTime(.0001, audioContext.currentTime, .12);
+          setTimeout(() => oldGain.disconnect(), 700);
+          musicGain = null;
+        }
+      }
+
+      $("soundButton").addEventListener("click", () => {
+        soundEnabled = !soundEnabled;
+        $("soundButton").textContent = `音效：${soundEnabled ? "開" : "關"}`;
+        $("soundButton").setAttribute("aria-pressed", String(soundEnabled));
+        $("soundButton").setAttribute("aria-label", soundEnabled ? "關閉音效" : "開啟音效");
+        if (soundEnabled) playSound("turn");
+      });
+
+      $("musicButton").addEventListener("click", () => {
+        musicEnabled = !musicEnabled;
+        $("musicButton").textContent = `音樂：${musicEnabled ? "開" : "關"}`;
+        $("musicButton").setAttribute("aria-pressed", String(musicEnabled));
+        $("musicButton").setAttribute("aria-label", musicEnabled ? "關閉背景音樂" : "開啟背景音樂");
+        if (musicEnabled) {
+          if (!$("game").classList.contains("hidden") && !state.finished) startMusic();
+        } else {
+          stopMusic();
+        }
+      });
+
+      $("musicVolume").addEventListener("input", () => {
+        if (musicGain && audioContext) {
+          musicGain.gain.setTargetAtTime(Math.max(.0001, Number($("musicVolume").value)), audioContext.currentTime, .08);
+        }
+      });
+
+      function addLog(message) {
+        const entry = document.createElement("div");
+        entry.className = "log-entry";
+        entry.textContent = message;
+        $("log").prepend(entry);
+      }
+
+      function renderBoard() {
+        const board = $("board");
+        board.replaceChildren();
+        tiles.forEach((tile, index) => {
+          const el = document.createElement("div");
+          el.className = `tile ${tile.type}`;
+          if (state.players.some((player) => player.position === index)) el.classList.add("active");
+          el.style.gridRow = String(coordinates[index][0] + 1);
+          el.style.gridColumn = String(coordinates[index][1] + 1);
+          const name = document.createElement("span");
+          name.className = "tile-name";
+          name.textContent = tile.name;
+          const meta = document.createElement("span");
+          meta.className = "tile-meta";
+          const owner = tile.type === "river" ? state.players.find((player) => player.rivers.includes(index)) : null;
+          meta.textContent = owner ? `河川・${owner.name}` : tile.note;
+          const tokens = document.createElement("span");
+          tokens.className = "tokens";
+          state.players.filter((player) => player.position === index).forEach((player) => {
+            const token = document.createElement("span");
+            token.className = "token";
+            token.style.background = player.color;
+            token.title = player.name;
+            tokens.append(token);
+          });
+          el.append(name, meta, tokens);
+          board.append(el);
+        });
+        const center = document.createElement("div");
+        center.className = "center-card";
+        center.innerHTML = `<svg class="world-map" viewBox="0 0 520 260" role="img" aria-label="世界地圖，標示各洲輪廓與河川"><defs><linearGradient id="ocean" x2="0" y2="1"><stop stop-color="#1b6680"/><stop offset="1" stop-color="#123c59"/></linearGradient><linearGradient id="land" x2="0" y2="1"><stop stop-color="#b4d58c"/><stop offset="1" stop-color="#6caa78"/></linearGradient><clipPath id="map-clip"><rect x="8" y="8" width="504" height="244" rx="28"/></clipPath></defs><rect x="8" y="8" width="504" height="244" rx="28" fill="url(#ocean)" stroke="#77c8cf" stroke-opacity=".55" stroke-width="2"/><g clip-path="url(#map-clip)" fill="none" stroke="#9de0dc" stroke-opacity=".17"><path d="M8 70h504M8 130h504M8 190h504"/><path d="M130 8v244M260 8v244M390 8v244"/></g><g fill="url(#land)" stroke="#d7e7b4" stroke-opacity=".65" stroke-width="2" stroke-linejoin="round"><path d="m55 63 18-21 25-7 13-16 31 5 15 13 27 1 11 15-12 12 4 18-17 12-5 24-19 9-9 24-17 5-11-18-15-6-4-18-19-4-13-19-20-4-12-15 8-11-11-10z"/><path d="m139 145 22 5 17 20 2 22-12 20-7 22-13 18-11-18-4-24-11-19 3-24-8-12z"/><path d="m206 65 15-14 17 5 7 12-10 12-19-2z"/><path d="m239 73 18-13 22 2 12 10 20-3 15 9 23-5 23 9 22-2 17 13 25 6 18 19-9 13-24-4-16 10-19-7-15 12-20-2-9 12-18-3-7-18-18-7-8-15-20-4-14-14-21 4-12-10-19-2z"/><path d="m270 123 23 6 17 19-5 22-13 26-11 20-17-10-7-23-14-14 2-23 13-8z"/><path d="m390 184 20-9 22 6 16 15-8 15-24 4-21-9z"/><path d="m449 137 7-5 6 8-8 7z"/></g><g fill="none" stroke="#64d8ec" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".95"><path d="m113 88 11 14-7 17 12 13"/><path d="m155 153 9 16-6 14 8 13"/><path d="m267 141 11 14-4 18 11 13"/><path d="m299 81 13 10-4 13 15 10"/></g><g fill="#f3ce73" stroke="#fff1bc" stroke-width="2"><circle cx="124" cy="111" r="5"/><circle cx="160" cy="177" r="5"/><circle cx="275" cy="157" r="5"/><circle cx="310" cy="99" r="5"/></g></svg><h2>世界河川巡旅</h2><p>集齊 5 個國度，再走完 24 格<br>成為世界巡旅皇帝</p><p>每 3 張河川卡 = 1 個國度</p>`;
+        board.append(center);
+      }
+
+      function renderPlayers() {
+        $("players").replaceChildren();
+        state.players.forEach((player, index) => {
+          const card = document.createElement("div");
+          card.className = "player-card";
+          const heading = document.createElement("div");
+          heading.className = "player-heading";
+          const dot = document.createElement("span");
+          dot.className = "token";
+          dot.style.background = player.color;
+          const label = document.createElement("span");
+          label.textContent = `${player.name}${index === state.current && !state.finished ? "（行動中）" : ""}`;
+          heading.append(dot, label);
+          const stats = document.createElement("div");
+          stats.className = "stats";
+          stats.textContent = `資金 ${player.money}｜河川 ${player.rivers.length}｜國度 ${player.countries}｜碳排 ${player.carbon} kg`;
+          const tour = document.createElement("div");
+          tour.className = "stats";
+          tour.textContent = player.countries >= 5
+            ? `環遊進度 ${Math.min(player.tour, 24)}/24 格`
+            : `距離環遊資格 ${Math.max(0, 5 - player.countries)} 個國度`;
+          card.append(heading, stats, tour);
+          $("players").append(card);
+        });
+      }
+
+      function render() {
+        renderBoard();
+        renderPlayers();
+        const active = state.players[state.current];
+        $("turnLabel").textContent = state.finished ? "遊戲結束" : `輪到 ${active.name}`;
+        $("rollButton").disabled = state.rolled || state.waiting || state.finished;
+        $("endTurnButton").disabled = !state.rolled || state.waiting || state.finished;
+      }
+
+      function setAction(title, text, buttons = []) {
+        const box = $("actionBox");
+        box.replaceChildren();
+        const heading = document.createElement("strong");
+        heading.textContent = title;
+        const description = document.createElement("span");
+        description.textContent = text;
+        box.append(heading, description);
+        const actions = document.createElement("div");
+        actions.className = "action-buttons";
+        buttons.forEach(({ label, callback, secondary }) => {
+          const button = document.createElement("button");
+          button.textContent = label;
+          if (secondary) button.className = "secondary";
+          button.addEventListener("click", callback, { once: true });
+          actions.append(button);
+        });
+        box.append(actions);
+      }
+
+      function finish(player, reason) {
+        if (state.finished) return;
+        state.finished = true;
+        stopMusic();
+        playSound("win");
+        clearInterval(state.timer);
+        render();
+        $("winnerTitle").textContent = `${player.name} 獲勝！`;
+        $("winnerMessage").textContent = reason;
+        $("winnerModal").classList.remove("hidden");
+      }
+
+      function score(player) {
+        return player.money + player.rivers.length * 100 + player.countries * 350 - Math.max(0, player.carbon) * 2;
+      }
+
+      function expireGame() {
+        const winner = [...state.players].sort((a, b) => score(b) - score(a))[0];
+        finish(winner, `兩小時時間到！總分 ${score(winner)} 分。國度、河川資產、資金與碳排共同計分。`);
+      }
+
+      function updateTimer() {
+        const hours = Math.floor(state.seconds / 3600);
+        const minutes = Math.floor((state.seconds % 3600) / 60);
+        const seconds = state.seconds % 60;
+        $("timerLabel").textContent = [hours, minutes, seconds].map((n) => String(n).padStart(2, "0")).join(":");
+        if (state.seconds <= 0) expireGame();
+      }
+
+      function convertRivers(player) {
+        while (player.rivers.length >= 3) {
+          player.rivers.splice(0, 3);
+          player.countries++;
+          player.money -= 100;
+          player.carbon += 60;
+          addLog(`${player.name} 投入 100 資金與 60 kg 碳排，完成第 ${player.countries} 個國度。`);
+          if (player.countries === 5) addLog(`${player.name} 已取得環遊資格！再走 24 格即可獲勝。`);
+        }
+      }
+
+      function resolveTile(player, steps) {
+        const tile = tiles[player.position];
+        const name = player.name;
+        state.rolled = true;
+        render();
+        if (tile.type === "start") {
+          player.money += 200;
+          addLog(`${name} 抵達世界起點，獲得 200 資金。`);
+          setAction("世界起點", `${name} 獲得 200 資金。可以結束回合。`);
+          return;
+        }
+        if (tile.type === "river") {
+          const owner = state.players.find((candidate) => candidate.rivers.includes(player.position));
+          if (owner === player) {
+            player.money += 30;
+            addLog(`${name} 回訪自有河川，取得 30 工程收益。`);
+            setAction(tile.name, "這是你的河川，取得 30 資金。");
+          } else if (owner) {
+            player.money -= 50;
+            owner.money += 50;
+            addLog(`${name} 經過 ${owner.name} 的河川工程區，支付 50 資金。`);
+            setAction(tile.name, `支付 50 資金給 ${owner.name}。`);
+          } else {
+            const price = 120 + (player.rivers.length % 3) * 20;
+            state.waiting = true;
+            render();
+            setAction(tile.name, `建設費 ${price}。取得河川卡可增加碳排 30 kg。`, [
+              { label: `購買（${price}）`, callback: () => {
+                if (player.money < price) {
+                  state.waiting = false;
+                  setAction(tile.name, `資金不足（需要 ${price}），你略過了這座河川。`);
+                  render();
+                  return;
+                }
+                player.money -= price;
+                player.rivers.push(player.position);
+                player.carbon += 30;
+                playSound("build");
+                convertRivers(player);
+                addLog(`${name} 建設 ${tile.name}，投入 ${price} 資金並增加 30 kg 碳排。`);
+                state.waiting = false;
+                render();
+                setAction(tile.name, "建設完成。可以結束回合。");
+              } },
+              { label: "略過", secondary: true, callback: () => {
+                state.waiting = false;
+                setAction(tile.name, "你選擇略過這座河川。");
+                render();
+              } }
+            ]);
+          }
+          return;
+        }
+        if (tile.type === "green") {
+          const events = [
+            { text: "完成太陽能合作案，獲得 100 資金並減少 40 kg 碳排。", money: 100, carbon: -40 },
+            { text: "儲能設備併網成功，獲得 60 資金並減少 25 kg 碳排。", money: 60, carbon: -25 },
+            { text: "綠色交通倡議獲支持，減少 50 kg 碳排。", money: 0, carbon: -50 }
+          ];
+          const event = events[randomInt(events.length)];
+          player.money += event.money;
+          player.carbon += event.carbon;
+          addLog(`${name}：${event.text}`);
+          setAction("綠能事件", event.text);
+          return;
+        }
+        if (tile.type === "carbon") {
+          const event = randomInt(2) === 0
+            ? { text: "碳盤查改善方案通過，獲得 80 資金並減少 30 kg 碳排。", money: 80, carbon: -30 }
+            : { text: "高碳工程補繳成本，支付 60 資金並增加 20 kg 碳排。", money: -60, carbon: 20 };
+          player.money += event.money;
+          player.carbon += event.carbon;
+          addLog(`${name}：${event.text}`);
+          setAction("碳管理事件", event.text);
+          return;
+        }
+        const event = randomInt(2) === 0
+          ? { text: "工程如期驗收，獲得 100 資金。", money: 100, carbon: 10 }
+          : { text: "設備維修超支，支付 70 資金。", money: -70, carbon: 15 };
+        player.money += event.money;
+        player.carbon += event.carbon;
+        addLog(`${name}：${event.text}`);
+        setAction("水庫工程", event.text);
+        if (steps === 0) return;
+      }
+
+      function waitForAnimation() {
+        return new Promise((resolve) => setTimeout(resolve, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 125));
+      }
+
+      $("startButton").addEventListener("click", () => {
+        playSound("turn");
+        const names = [...document.querySelectorAll(".name-grid input")].map((input, index) => input.value.trim() || `玩家${index + 1}`);
+        state.players = names.map((name, index) => ({
+          name, color: colors[index], position: 0, money: 1000, rivers: [], countries: 0, carbon: 0, tour: 0
+        }));
+        state.current = 0;
+        state.seconds = duration;
+        state.finished = false;
+        state.rolled = false;
+        state.waiting = false;
+        musicEnabled = $("musicButton").getAttribute("aria-pressed") !== "false";
+        $("log").replaceChildren();
+        $("setup").classList.add("hidden");
+        $("game").classList.remove("hidden");
+        setAction("旅程開始", "輪流擲骰，建設河川並完成世界巡旅。");
+        addLog("四位玩家已在世界起點集合，遊戲開始。");
+        render();
+        startMusic();
+        updateTimer();
+        clearInterval(state.timer);
+        state.timer = setInterval(() => {
+          state.seconds--;
+          updateTimer();
+        }, 1000);
+      });
+
+      $("rollButton").addEventListener("click", async () => {
+        if (state.rolled || state.waiting || state.finished) return;
+        playSound("dice");
+        const player = state.players[state.current];
+        const roll = randomInt(6) + 1;
+        const dieFaces = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+        state.waiting = true;
+        render();
+        const dice = $("diceDisplay");
+        dice.classList.add("rolling");
+        for (let frame = 0; frame < 7; frame++) {
+          dice.textContent = dieFaces[randomInt(dieFaces.length)];
+          await waitForAnimation();
+        }
+        dice.textContent = dieFaces[roll - 1];
+        dice.classList.remove("rolling");
+        const passedStart = player.position + roll >= tiles.length;
+        for (let step = 0; step < roll; step++) {
+          player.position = (player.position + 1) % tiles.length;
+          if (player.position === 0) player.money += 200;
+          if (player.countries >= 5) {
+            player.tour++;
+          }
+          render();
+          await waitForAnimation();
+          if (player.countries >= 5 && player.tour >= 24) {
+            addLog(`${player.name} 完成世界環遊！`);
+            finish(player, `已集滿 5 個國度並完成 24 格世界巡旅。`);
+            return;
+          }
+        }
+        state.waiting = false;
+        addLog(`${player.name} 擲出 ${roll} 點，移動到 ${tiles[player.position].name}${passedStart ? "，經過起點 +200 資金" : ""}。`);
+        resolveTile(player, roll);
+      });
+
+      $("endTurnButton").addEventListener("click", () => {
+        if (!state.rolled || state.waiting || state.finished) return;
+        state.current = (state.current + 1) % state.players.length;
+        playSound("turn");
+        state.rolled = false;
+        setAction("輪到下一位", "擲骰開始行動。");
+        render();
+      });
+
+      function newGame() {
+        clearInterval(state.timer);
+        stopMusic();
+        state.finished = false;
+        $("winnerModal").classList.add("hidden");
+        $("game").classList.add("hidden");
+        $("setup").classList.remove("hidden");
+      }
+      $("resetButton").addEventListener("click", newGame);
+      $("playAgainButton").addEventListener("click", newGame);
+    })();
+  </script>
+</body>
+</html>
